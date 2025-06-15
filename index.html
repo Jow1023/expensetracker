@@ -54,13 +54,22 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.06);
     }
 
-    form {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 16px;
-      align-items: end;
-    }
+   form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: end;
+}
+@media (max-width: 600px) {
+  form {
+    grid-template-columns: 1fr!important; /* Stack all inputs vertically */
+  }
 
+  form button {
+    grid-column: span 1 !important; /* Make sure the button is full-width on small screens */
+    width: 100%;
+  }
+}
     .form-group {
       display: flex;
       flex-direction: column;
@@ -81,8 +90,11 @@
     }
 
     form button {
-      grid-column: span 2;
+      grid-column: 2;
       justify-self: end;
+      padding: 14px 24px;
+      font-size: 16px;
+      grid-column: span 2;
       padding: 10px;
       background: #4f46e5;
       color: white;
@@ -90,6 +102,7 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
+    
     }
 
     .transaction-list {
@@ -157,10 +170,11 @@
     </div>
   </div>
 
-  <div class="chart-box">
+ <div class="chart-box">
     <h3>Monthly Overview</h3>
     <canvas id="monthlyChart" height="100"></canvas>
   </div>
+
 
   <div class="form-box">
     <h3>Add New Transaction</h3>
@@ -183,6 +197,7 @@
           <option value="Shopping" data-type="expense">Shopping</option>
           <option value="Transportation" data-type="expense">Transportation</option>
           <option value="Entertainment" data-type="expense">Entertainment</option>
+          
         </select>
       </div>
       <div class="form-group">
@@ -207,7 +222,7 @@
     <div class="transaction-list" id="transaction-list"></div>
   </div>
 
-  <script>
+<script>
     const balanceEl = document.getElementById("balance");
     const incomeEl = document.getElementById("income");
     const expenseEl = document.getElementById("expense");
@@ -215,15 +230,6 @@
     const transactionList = document.getElementById("transaction-list");
     const categorySelect = document.getElementById("category");
     const typeSelect = document.getElementById("type");
-
-    // Restore input values
-    ["description", "amount", "category", "date"].forEach(id => {
-      const el = document.getElementById(id);
-      el.value = localStorage.getItem(`form_${id}`) || "";
-      el.addEventListener("input", () => {
-        localStorage.setItem(`form_${id}`, el.value);
-      });
-    });
 
     categorySelect.addEventListener("change", function () {
       const selected = this.options[this.selectedIndex];
@@ -244,16 +250,26 @@
         data: {
           labels: data.labels,
           datasets: [
-            { label: "Income", backgroundColor: "#10b981", data: data.income },
-            { label: "Expenses", backgroundColor: "#ef4444", data: data.expense }
-          ]
+            {
+              label: "Income",
+              backgroundColor: "#10b981",
+              data: data.income,
+            },
+            {
+              label: "Expenses",
+              backgroundColor: "#ef4444",
+              data: data.expense,
+            },
+          ],
         },
         options: {
           responsive: true,
           plugins: {
-            legend: { position: "top" }
-          }
-        }
+            legend: {
+              position: "top",
+            },
+          },
+        },
       });
     }
 
@@ -262,13 +278,18 @@
       localStorage.setItem("transactions", JSON.stringify(transactions));
       transactionList.innerHTML = "";
 
-      const monthly = { labels: [], income: [], expense: [] };
+      const monthly = {
+        labels: [],
+        income: [],
+        expense: [],
+      };
       const monthlyMap = {};
 
       transactions.forEach((t, index) => {
         if (t.type === 'income') income += t.amount;
         else expense += t.amount;
 
+        // Render transactions
         const tr = document.createElement("div");
         tr.className = `transaction ${t.type}`;
         tr.innerHTML = `
@@ -284,6 +305,7 @@
         `;
         transactionList.appendChild(tr);
 
+        // Aggregate by month
         const month = new Date(t.date).toLocaleString("default", { month: "short", year: "numeric" });
         if (!monthlyMap[month]) monthlyMap[month] = { income: 0, expense: 0 };
         monthlyMap[month][t.type] += t.amount;
@@ -295,6 +317,7 @@
       balanceEl.textContent = `$${balance.toFixed(2)}`;
       savingsEl.textContent = `$${balance.toFixed(2)}`;
 
+      // Prepare data for chart
       for (const month in monthlyMap) {
         monthly.labels.push(month);
         monthly.income.push(monthlyMap[month].income);
@@ -335,12 +358,6 @@
         type: document.getElementById("type").value
       };
       transactions.push(t);
-
-      // Clear saved form values
-      ["description", "amount", "category", "date"].forEach(id => {
-        localStorage.removeItem(`form_${id}`);
-      });
-
       this.reset();
       updateDisplay();
     });
@@ -355,8 +372,6 @@
         });
       });
     });
-
-    updateDisplay();
   </script>
 </body>
 </html>
