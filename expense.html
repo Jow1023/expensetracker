@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { margin: 0; background: #f9fafb; color: #111827; padding: 24px; }
+    h1, h2, h3 { margin: 0; }
+
+    .header {
+      background: linear-gradient(to right, #4f46e5, #3b82f6);
+      color: white;
+      padding: 24px;
+      border-radius: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .cards {
+      display: flex;
+      gap: 24px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+      padding: 24px;
+      flex: 1;
+      min-width: 220px;
+      border-left: 6px solid;
+    }
+
+    .card.income { border-color: #10b981; }
+    .card.expense { border-color: #ef4444; }
+    .card.savings { border-color: #6366f1; }
+
+    .card h3 { margin-bottom: 8px; font-weight: 600; color: #374151; }
+    .card p { font-size: 1.5em; margin: 0; font-weight: bold; }
+
+    .chart-box, .form-box, .transactions-box {
+      margin-top: 32px;
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    form input, form select {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: white;
+      font-size: 16px;
+      color: #111827;
+    }
+
+    form button {
+      grid-column: span 2;
+      justify-self: end;
+      padding: 10px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .transaction-list {
+      margin-top: 20px;
+    }
+
+    .transaction {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .transaction .info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .transaction .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .transaction.income { color: #10b981; }
+    .transaction.expense { color: #ef4444; }
+
+    .filters {
+      margin-top: 16px;
+    }
+
+    .filters button {
+      margin-right: 12px;
+      background: #e5e7eb;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .filters button.active {
+      background: #4f46e5;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Expense Tracker</h1>
+    <h2>Balance: <span id="balance">$0.00</span></h2>
+  </div>
+
+  <div class="cards">
+    <div class="card income">
+      <h3>INCOME</h3>
+      <p id="income">$0.00</p>
+    </div>
+    <div class="card expense">
+      <h3>EXPENSES</h3>
+      <p id="expense">$0.00</p>
+    </div>
+    <div class="card savings">
+      <h3>SAVINGS</h3>
+      <p id="savings">$0.00</p>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <h3>Monthly Overview</h3>
+    <canvas id="monthlyChart" height="100"></canvas>
+  </div>
+
+  <div class="form-box">
+    <h3>Add New Transaction</h3>
+    <form id="transaction-form">
+      <div class="form-group">
+        <label for="description">Description</label>
+        <input type="text" id="description" placeholder="What was it for?" required />
+      </div>
+      <div class="form-group">
+        <label for="amount">Amount (₱)</label>
+        <input type="number" id="amount" placeholder="0.00" required />
+      </div>
+      <div class="form-group">
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="">Select a category</option>
+          <option value="Income" data-type="income">Income</option>
+          <option value="Food & Dining" data-type="expense">Food & Dining</option>
+          <option value="Utilities" data-type="expense">Utilities</option>
+          <option value="Shopping" data-type="expense">Shopping</option>
+          <option value="Transportation" data-type="expense">Transportation</option>
+          <option value="Entertainment" data-type="expense">Entertainment</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" required />
+      </div>
+      <select id="type" required hidden>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+      <button type="submit">Add Transaction</button>
+    </form>
+  </div>
+
+  <div class="transactions-box">
+    <h3>Recent Transactions</h3>
+    <div class="filters">
+      <button data-type="all" class="active">All</button>
+      <button data-type="income">Income</button>
+      <button data-type="expense">Expense</button>
+    </div>
+    <div class="transaction-list" id="transaction-list"></div>
+  </div>
+
+  <script>
+    const balanceEl = document.getElementById("balance");
+    const incomeEl = document.getElementById("income");
+    const expenseEl = document.getElementById("expense");
+    const savingsEl = document.getElementById("savings");
+    const transactionList = document.getElementById("transaction-list");
+    const categorySelect = document.getElementById("category");
+    const typeSelect = document.getElementById("type");
+
+    // Restore input values
+    ["description", "amount", "category", "date"].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = localStorage.getItem(`form_${id}`) || "";
+      el.addEventListener("input", () => {
+        localStorage.setItem(`form_${id}`, el.value);
+      });
+    });
+
+    categorySelect.addEventListener("change", function () {
+      const selected = this.options[this.selectedIndex];
+      const type = selected.getAttribute("data-type");
+      if (type) typeSelect.value = type;
+    });
+
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    let chartInstance = null;
+
+    function updateChart(data) {
+      const ctx = document.getElementById("monthlyChart").getContext("2d");
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: data.labels,
+          datasets: [
+            { label: "Income", backgroundColor: "#10b981", data: data.income },
+            { label: "Expenses", backgroundColor: "#ef4444", data: data.expense }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "top" }
+          }
+        }
+      });
+    }
+
+    function updateDisplay() {
+      let income = 0, expense = 0;
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      transactionList.innerHTML = "";
+
+      const monthly = { labels: [], income: [], expense: [] };
+      const monthlyMap = {};
+
+      transactions.forEach((t, index) => {
+        if (t.type === 'income') income += t.amount;
+        else expense += t.amount;
+
+        const tr = document.createElement("div");
+        tr.className = `transaction ${t.type}`;
+        tr.innerHTML = `
+          <div class="info">
+            <strong>${t.description}</strong>
+            <small>${t.date} • ${t.category}</small>
+          </div>
+          <div class="actions">
+            <span>${t.type === 'income' ? '+' : '-'}$${t.amount.toFixed(2)}</span>
+            <button onclick="editTransaction(${index})"><i class='fas fa-edit'></i></button>
+            <button onclick="confirmDelete(${index})"><i class='fas fa-trash-alt'></i></button>
+          </div>
+        `;
+        transactionList.appendChild(tr);
+
+        const month = new Date(t.date).toLocaleString("default", { month: "short", year: "numeric" });
+        if (!monthlyMap[month]) monthlyMap[month] = { income: 0, expense: 0 };
+        monthlyMap[month][t.type] += t.amount;
+      });
+
+      incomeEl.textContent = `$${income.toFixed(2)}`;
+      expenseEl.textContent = `$${expense.toFixed(2)}`;
+      const balance = income - expense;
+      balanceEl.textContent = `$${balance.toFixed(2)}`;
+      savingsEl.textContent = `$${balance.toFixed(2)}`;
+
+      for (const month in monthlyMap) {
+        monthly.labels.push(month);
+        monthly.income.push(monthlyMap[month].income);
+        monthly.expense.push(monthlyMap[month].expense);
+      }
+
+      updateChart(monthly);
+    }
+
+    function editTransaction(index) {
+      const t = transactions[index];
+      document.getElementById("description").value = t.description;
+      document.getElementById("amount").value = t.amount;
+      document.getElementById("category").value = t.category;
+      document.getElementById("date").value = t.date;
+      typeSelect.value = t.type;
+      deleteTransaction(index);
+    }
+
+    function deleteTransaction(index) {
+      transactions.splice(index, 1);
+      updateDisplay();
+    }
+
+    function confirmDelete(index) {
+      if (confirm("Are you sure you want to delete this transaction?")) {
+        deleteTransaction(index);
+      }
+    }
+
+    document.getElementById("transaction-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const t = {
+        description: document.getElementById("description").value,
+        amount: parseFloat(document.getElementById("amount").value),
+        category: document.getElementById("category").value,
+        date: document.getElementById("date").value,
+        type: document.getElementById("type").value
+      };
+      transactions.push(t);
+
+      // Clear saved form values
+      ["description", "amount", "category", "date"].forEach(id => {
+        localStorage.removeItem(`form_${id}`);
+      });
+
+      this.reset();
+      updateDisplay();
+    });
+
+    document.querySelectorAll(".filters button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filters button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const type = btn.dataset.type;
+        document.querySelectorAll(".transaction").forEach(tr => {
+          tr.style.display = (type === 'all' || tr.classList.contains(type)) ? "flex" : "none";
+        });
+      });
+    });
+
+    updateDisplay();
+  </script>
+</body>
+</html>
